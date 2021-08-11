@@ -1,7 +1,7 @@
 # crocBot
 el mejor bot de discord de la historia
 
-```nodejs
+```JavaScript
 
 const discord = require ("discord.js");
 var path = require('path');
