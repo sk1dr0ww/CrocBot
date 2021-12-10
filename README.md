@@ -1,4 +1,6 @@
-# CrocBot 2.0 -- el mejor bot de discord de la historia. powered by openai.com (gpt3) - qrng.anu.edu.au (qInt) --
+# CrocBot 2.0 
+
+El mejor bot de discord de la historia. Powered by openai.com (gpt3) - qrng.anu.edu.au (qInt) 
 
 ```JavaScript
 
