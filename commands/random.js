@@ -1,10 +1,21 @@
 const discord = require ("discord.js");
-var path = require('path');
+const path = require('path');
 const request = require('request');
-var fs = require('fs');
-var _ = require('lodash');
+const fs = require('fs');
+const _ = require('lodash');
+const fns = require('date-fns');
+const eoLocale = require('date-fns/locale/es');
+const random = require('random');
 
 const base_url = 'https://k6teamstore.com/_cursed/imagenes/';	//url donde se encuentran las imagenes
+
+const valid_ext = ['.png', '.jpg', '.jpeg', '.wmv', '.mp4', '.webm'];	//valid extentions
+
+//normalizo el rango de numeros aleatorios cuantico (0-65535) a (0-cantImagenes)
+function NormalizeRange(random, max){
+	return Math.ceil((parseInt(random)/65535)*parseInt(max));
+}
+
 
 exports.run = (client, message, args) =>{
 
@@ -12,14 +23,19 @@ exports.run = (client, message, args) =>{
 	const username = message.author.username;	//nombre base del usuario (no nickname)
 
 	//creo un array de todos los nombres de las imagenes
-	var imagenes = fs.readFileSync('imagenes.txt').toString().split("\n");
-
+	//const imagenes = fs.readFileSync('imagenes.txt').toString().split("\n"); //deprecated, nesecitaba un .txt con los nombres de las imagenes
+	var imagenes = [];
+	fs.readdirSync('../imagenes/').forEach(file => { 
+		imagenes = _.concat(imagenes, file);
+	});
 	
-
 	if (!args.length) { //comando base, si no hay ningun argumento, elijo una imagen aleatoria y la muestro
 
 		//elijo una imagen aleatoria
-		const imagen = imagenes[Math.floor(Math.random() * imagenes.length)] // Chooses a random list from statuses and puts it into a variable.
+		//const imagen = imagenes[Math.floor(Math.random() * imagenes.length)]
+		var imagen = imagenes[random.int(0, imagenes.length)];
+
+		//eiv = path.extname(args[1]).toLowerCase();
 
 		//envio la imagen embebida con un link absoluto desde el servidor
 		const embedImg = new discord.MessageEmbed()
@@ -28,30 +44,60 @@ exports.run = (client, message, args) =>{
 
 	}
 
+	//si el argumento es quantum, muestra una imagen random pero usando qrng numeros aleatorios cuanticos
+	if(args[0] == 'quantum'){
 
-	if (args[0] == 'add'){ //si el argumento es add
+		request({
+			uri: "https://qrng.anu.edu.au/API/jsonI.php?length=1&type=uint16",
+		}, function(error, response, body){
+			
+			//qrng devuelve un json con los numeros
+			var quantum = JSON.parse(body, 'utf8');
 
-		//si el segundo argumento no esta vacio ej.: (!croc random add[0] 'url'[1] 'forced_name'[2])
+			//tomo solo el arreglo de numeros del json
+			quantumInt = quantum.data;
+
+			//tomo el valor normalizado
+			nQint = NormalizeRange(quantumInt, imagenes.length);
+
+			var imagen = imagenes[nQint];
+
+			const embedImg = new discord.MessageEmbed()
+				.setImage(base_url+imagen)
+				.setDescription('qInt #'+quantumInt+' → Normal #'+nQint)
+			message.channel.send({embed: embedImg})
+
+		});
+
+
+
+	}
+
+	//
+	//TODO: arreglar un bug que al subir una imagen nueva da error "ya existente" y hay que forzar el nombre para subirla
+	//
+
+	if (args[0] == 'add'){ //si el argumento es add (agrego una foto nueva)
+
+		//si el segundo argumento NO esta vacio ej.: (!croc random add[0] 'url'[1] 'forced_name'[2])
 		//forza el nombre de la imagen a descargar al nombre del args[2]
-
+		//esto sirve por si ya existe una imagen con el mismo nombre, pero es distinta, se puede forzar el nombre de la imagen cuando se descarga a la carpeta de imagenes
 		if(args[2] != ''){	//si no esta vacio, tomo el nombre de args[2]
 			basename = args[2];
 		}else{	//y si esta vacio, tomo el nombre original del archivo
 			basename = path.basename(args[1]);
 		}
 	
-		e = path.extname(args[1]).toLowerCase(); //tomo la extension del archivo, y la convierto en minusculas para no tener que usar dos checkeos (.jpg y .JPG)
+		basename = _.snakeCase(basename); //remuevo los espacios y separo palabras con '_' asi evito errores con los espacios
 
-		if (e == '.wmv' || e == '.mp4'){
-
-		}//fin si es video
-
-		//verifico la extension del archivo (si es imagen) TODO: convertir todas las posibilidades en array
-		if (e == '.png' ||e == '.jpg' || e == '.jpeg'){ 
+		e = path.extname(args[1]).toLowerCase(); //tomo la extension del archivo, y la convierto en minusculas para no tener que usar dos checkeos (.jpg o .JPG)
+		
+		//verifico la extension del archivo (si es imagen o video)
+		if (valid_ext.includes(e)){ 
 
 			fs.stat('../imagenes/'+basename, function(err, stat) { //chequeo si la imagen ya existe para no agregarla dos veces
 			    if(err == null) {
-			        message.channel.send('Imagen ya existe!')
+			        message.channel.send('El archivo ya existe, intente otro nombre.')
 
 			    } else if(err.code === 'ENOENT') { //file does not exist
 
@@ -63,25 +109,23 @@ exports.run = (client, message, args) =>{
 					};
 
 					//descargo la imagen
-					download(args[1], '../imagenes/'+basename, function(){
-				  
-					});
+					download(args[1], '../imagenes/'+basename, function(){});
 
-					//hago un append al txt de nombres de las imagenes con la nueva imagen
-					const fs = require('fs');
-					fs.appendFileSync('imagenes.txt', '\n'+basename);
+					//hago un append al txt de nombres de las imagenes con la nueva imagen (deprecated, ya no nesecito el .txt)
+					//const fs = require('fs');
+					//fs.appendFileSync('imagenes.txt', '\n'+basename);
 
-					message.channel.send('Imagen agregada!')
+					message.channel.send('Archivo agregado.')
 
 			    } else {
 
-			    	//cualquiero otro error que alla pasado
+			    	//cualquier otro error que haya pasado
 			        console.log('Oh no, la croc se rompio!: ', err.code);
 			    }
 			});
 									
 		}else{ //error si el formato del archivo es incorrecto
-			message.channel.send('Formato incorrecto [.png, .jpg, .jpeg]')
+			message.channel.send(e+' es un formato invalido. formatos validos -> ['+valid_ext+']');
 		} //fin si es imagen
 
 	}; //fin args add
@@ -91,87 +135,111 @@ exports.run = (client, message, args) =>{
 		message.channel.send('Hay '+imagenes.length+' archivos en la croc.')
 	}; //fin args count
 
-	function showMulti(){
-		var multi = '';
-		for(var i=0; i<5; i++) {
-			multi = imagenes[Math.floor(Math.random() * imagenes.length)];
-			const embedImg = new discord.MessageEmbed()
-				.setImage(base_url+multi) 
-			message.channel.send({embed: embedImg})
-		}
-	}
+	function showMulti(quantum){
+				
+			//si la opcion es quantum	
+			if(quantum == true){
+				request({
+					uri: "https://qrng.anu.edu.au/API/jsonI.php?length=5&type=uint16",
+				}, function(error, response, body){
+					
+					//qrng devuelve un json con los numeros
+					var quantum = JSON.parse(body, 'utf8');
 
-	function TimeCounter(n){
-		var content="";
-		var tx=n;
-		t=parseInt(tx);
+					//tomo solo el arreglo de numeros del json
+					quantumInt = quantum.data;
 
-		var days=parseInt(t/86400);
-		t=t-(days*86400);
-		var hours=parseInt(t/3600);
-		t=t-(hours*3600);
-		var minutes=parseInt(t/60);
-		t=t-(minutes*60);
-		
-		if(days)content+=days+" dias y";
-		
-		if(hours||days){if(days)content+=" ";
-			content+=hours+" horas ";
-		}
-		//content+=minutes+" minutes and "+t+" seconds.";
-		
-		return content;
-	}
-	
-	function getFecha(t, d = 0){
-	    var date = new Date(t);
-	    date.setDate(date.getDate()+d);
-	    date = ('0' + date.getDate()).slice(-2) + '/' + ('0' + (date.getMonth()+1)).slice(-2) + '/' + date.getFullYear();
-	    return date;
-    }
+					for(var i=0; i<5; i++) {
 
+						var multi = imagenes[NormalizeRange(parseInt(quantumInt[i]), imagenes.length)];
+
+						const embedImg = new discord.MessageEmbed()
+							.setImage(base_url+multi) 
+							.setFooter('qInt Seed #'+quantumInt[i]);
+						message.channel.send({embed: embedImg})
+
+					}
+
+				});
+
+			//si no la funcion normal
+			}else{
+				for(var i=0; i<5; i++) {
+					var multi = imagenes[random.int(0, imagenes.length)]
+					const embedImg = new discord.MessageEmbed()
+						.setImage(base_url+multi) 
+					message.channel.send({embed: embedImg})
+				}
+			}	
+			
+	} //fin showMulti()
 
 	if (args[0] == 'multi'){ //si el arg es multi envia 5 fotos aleatorias y pone un timer de 24hs al usuario
 
-		fs.stat(userid, function(err, stat) { //chequeo si el archivo del usuario ya existe
-				    
-			if(err == null) {
-				//file exist
-				//leo el valor de tiempo del archivo del usuario
-				var lastTime = fs.readFileSync(userid, 'utf8')
+		if(args[1] == 'quantum'){
+			quantum = true;
+		}else{
+			quantum = false;
+		}
 
-				//si pasaron 24hs
-				if ((Date.now() - lastTime) > 86400000) /* 86400000ms = 1 dia */ { 		
+		fs.stat(userid, function(err, stat) { //chequeo si el archivo del usuario ya existe
+			
+			//file exist	    
+			if(err == null) {
+
+				//leo el json con los datos del usuario
+				var userdata = JSON.parse(fs.readFileSync(userid, 'utf8'));
+				//fecha actual en unix epoch en ms
+				var dateNow = new Date();
+				//leo el valor unix epoch del archivo del usuario. ms > s > unix to date
+				var lastMulti = fns.fromUnixTime(fns.millisecondsToSeconds(userdata.lastMulti));
+				//calculo la diferencia en horas desde el ultimo multi
+				var hourDifference = fns.differenceInHours(dateNow,lastMulti);
+
+				//si pasaron +24hs
+				if(hourDifference >= 24){
+
+					showMulti(quantum);		
 					
-					showMulti();		
-					fs.writeFileSync(userid,Date.now());
-				
+					userdata.lastMulti = Date.now();	//renuevo la fecha del ultimo multi
+					userdata.logins++;	//incremento +1 el contador de logins diarios
+
+					//si pasaron +48hs pierde el login
+					if(hourDifference >= 48){ 
+						userdata.logins = 1; //reinicio el contador
+						message.channel.send ('perdiste el login :(');
+					}
+
+					message.channel.send ('Logins de '+username+': '+userdata.logins);
+
+					//guardo los nuevos datos
+					fs.writeFileSync(userid,JSON.stringify(userdata));
+
 				//falta tiempo	
 				} else {
 
-					//tTime = (((Date.now() - lastTime)/7)-(3600*20))
-					//var proxDate = Date(lastTime+86400000+72000000);
-					//proxDate.toLocaleString('es-ES', { timeZone: 'Argentina/Buenos_aires' })
-					//console.log(proxDate);
-					message.channel.send('Ya gastaste tu multi, segui esperando capo.');
+					//calculo el tiempo faltante (fecha en el archivo + 24hs)
+					var remaining = fns.formatDistanceToNow(fns.addDays(lastMulti,1),{locale: eoLocale});
+					message.channel.send('Proximo multi disponible en '+remaining);
 
 				}
 				        
 
 				} else if(err.code === 'ENOENT') {
 				    // file does not exist
-				    fs.writeFileSync(userid,Date.now());
-				    showMulti();
+				    var new_userdata = {};
+
+					new_userdata.lastMulti = Date.now();
+					new_userdata.logins = 1;
+
+				    fs.writeFileSync(userid,JSON.stringify(new_userdata));
+				    showMulti(quantum);
 
 				} else {
-				    //cualquier otro error que alla pasado
-				    message.channel.send ('an error ocurred $uuid: '+userid);
+				    //cualquier otro error que halla pasado
+				    message.channel.send ('algo en la croc se rompio xd');
 				}
 		});
-
-		
-
-		
 
 	}; //fin args multi
 

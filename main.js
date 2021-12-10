@@ -1,6 +1,7 @@
 const Discord = require("discord.js");
 const Enmap = require("enmap");
 const fs = require("fs");
+const spawn = require("child_process").spawn;
 
 const client = new Discord.Client();
 const config = require('./cfg/config.json')
@@ -31,26 +32,51 @@ fs.readdir("./events/", (err, files) => {
 });
 
 
+
+
+
+client.on('message', message => {
+  if(message.channel.id == '879174924277780500' && message.author.id != '855824265285730325'){
+    
+        var autor = message.author.username
+        var mensaje = message.content
+
+        //invoco main.py el script que crea la respuesta de gpt3 openai
+        const pythonProcess = spawn('python3',["./commands/main.py", autor, mensaje]);
+        pythonProcess.stdout.on('data', (data) => {
+          
+          var response = data.toString();
+          
+          if(response.length > 0){
+            message.channel.send(response);    
+          }else{
+            message.channel.send('?');
+          }
+
+          fs.appendFileSync('train.txt', autor+': '+mensaje+'\ncrocbot: '+response);
+
+        });
+      
+    }
+});
+
+
+
+
+
 client.on("ready", () => {
-  
-  client.user.setActivity('tu vieja', { type: 'WATCHING' });
-   
-  
+    
+  var estados = fs.readFileSync('estados.txt').toString().split("\n");
+  var estado = estados[Math.floor(Math.random() * estados.length)];
+  client.user.setActivity(estado, { type: "WATCHING" }) // Status changer - WATCHING / LISTENING / STREAMING / DND / ONLINE
 
+  setInterval(() => {
 
-  //setInterval(() => {
-
-  //   const statuses = [
-  //       `Croqueando`, // Enables the bot to show how many servers it's in, in the status
-  //       `Con la vieja de `+user.user, // Enables the bot to show how many channels it's in, in the status
-  //   ]
-  //   const status = statuses[Math.floor(Math.random() * statuses.length)] // Chooses a random list from statuses and puts it into a variable.
-  //   client.user.setActivity(status, { type: "WATCHING" }) // Status changer - WATCHING / LISTENING / STREAMING / DND / ONLINE
-  // }, 
-  //   5000) // Time for status to change - Recommended  = 20,000 (20 Seconds) - API doesn't really allow less values but it will work
+    var estado = estados[Math.floor(Math.random() * estados.length)];
+    client.user.setActivity(estado, { type: "WATCHING" }) // Status changer - WATCHING / LISTENING / STREAMING / DND / ONLINE
+  }, 
+    600000)
 
 });
 
 client.login(config.token)
-
-
