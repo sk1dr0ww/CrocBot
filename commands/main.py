@@ -2,7 +2,7 @@ import sys
 import os
 import openai
 
-openai.api_key = "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";
+openai.api_key = "YOUR-API-KEY";
 
 f = open("base.txt", "r")
 base = f.read()
