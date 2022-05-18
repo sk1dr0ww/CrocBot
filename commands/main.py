@@ -2,9 +2,9 @@ import sys
 import os
 import openai
 
-openai.api_key = "YOUR-API-KEY";
+openai.api_key = "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";
 
-f = open("base.txt", "r")
+f = open("gpt3base", "r")
 base = f.read()
 f.close()
 

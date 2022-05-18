@@ -6,8 +6,10 @@ const _ = require('lodash');
 const fns = require('date-fns');
 const eoLocale = require('date-fns/locale/es');
 const random = require('random');
+const config = require('../cfg/config.json');
 
-const base_url = 'https://k6teamstore.com/_cursed/imagenes/';	//url donde se encuentran las imagenes
+const imagesDir = config.localdir;
+const base_url = config.url+config.webdir;	//url donde se encuentran las imagenes
 
 const valid_ext = ['.png', '.jpg', '.jpeg', '.wmv', '.mp4', '.webm'];	//valid extentions
 
@@ -25,7 +27,7 @@ exports.run = (client, message, args) =>{
 	//creo un array de todos los nombres de las imagenes
 	//const imagenes = fs.readFileSync('imagenes.txt').toString().split("\n"); //deprecated, nesecitaba un .txt con los nombres de las imagenes
 	var imagenes = [];
-	fs.readdirSync('../imagenes/').forEach(file => { 
+	fs.readdirSync(imagesDir).forEach(file => { 
 		imagenes = _.concat(imagenes, file);
 	});
 	
@@ -95,7 +97,7 @@ exports.run = (client, message, args) =>{
 		//verifico la extension del archivo (si es imagen o video)
 		if (valid_ext.includes(e)){ 
 
-			fs.stat('../imagenes/'+basename, function(err, stat) { //chequeo si la imagen ya existe para no agregarla dos veces
+			fs.stat(imagesDir+basename, function(err, stat) { //chequeo si la imagen ya existe para no agregarla dos veces
 			    if(err == null) {
 			        message.channel.send('El archivo ya existe, intente otro nombre.')
 
@@ -109,7 +111,7 @@ exports.run = (client, message, args) =>{
 					};
 
 					//descargo la imagen
-					download(args[1], '../imagenes/'+basename, function(){});
+					download(args[1], imagesDir+basename, function(){});
 
 					//hago un append al txt de nombres de las imagenes con la nueva imagen (deprecated, ya no nesecito el .txt)
 					//const fs = require('fs');
