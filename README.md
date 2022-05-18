@@ -1,6 +1,6 @@
 # CrocBot 2.0 
 
-El mejor bot de discord de la historia.
+El mejor bot de discord de la historia y mi mayor orgullo
 
 ```JavaScript
 
