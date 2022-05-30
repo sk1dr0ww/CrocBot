@@ -79,59 +79,6 @@ exports.run = (client, message, args) =>{
 	//TODO: arreglar un bug que al subir una imagen nueva da error "ya existente" y hay que forzar el nombre para subirla
 	//
 
-	if (args[0] == 'add'){ //si el argumento es add (agrego una foto nueva)
-
-		//si el segundo argumento NO esta vacio ej.: (!croc random add[0] 'url'[1] 'forced_name'[2])
-		//forza el nombre de la imagen a descargar al nombre del args[2]
-		//esto sirve por si ya existe una imagen con el mismo nombre, pero es distinta, se puede forzar el nombre de la imagen cuando se descarga a la carpeta de imagenes
-		if(args[2] != ''){	//si no esta vacio, tomo el nombre de args[2]
-			basename = args[2];
-		}else{	//y si esta vacio, tomo el nombre original del archivo
-			basename = path.basename(args[1]);
-		}
-	
-		basename = _.snakeCase(basename); //remuevo los espacios y separo palabras con '_' asi evito errores con los espacios
-
-		e = path.extname(args[1]).toLowerCase(); //tomo la extension del archivo, y la convierto en minusculas para no tener que usar dos checkeos (.jpg o .JPG)
-		
-		//verifico la extension del archivo (si es imagen o video)
-		if (valid_ext.includes(e)){ 
-
-			fs.stat(imagesDir+basename, function(err, stat) { //chequeo si la imagen ya existe para no agregarla dos veces
-			    if(err == null) {
-			        message.channel.send('El archivo ya existe, intente otro nombre.')
-
-			    } else if(err.code === 'ENOENT') { //file does not exist
-
-			       	//si no existe descargo la imagen
-			       	var download = function(uri, filename, callback){
-					  request.head(uri, function(err, res, body){
-					    request(uri).pipe(fs.createWriteStream(filename)).on('close', callback);
-					  });
-					};
-
-					//descargo la imagen
-					download(args[1], imagesDir+basename, function(){});
-
-					//hago un append al txt de nombres de las imagenes con la nueva imagen (deprecated, ya no nesecito el .txt)
-					//const fs = require('fs');
-					//fs.appendFileSync('imagenes.txt', '\n'+basename);
-
-					message.channel.send('Archivo agregado.')
-
-			    } else {
-
-			    	//cualquier otro error que haya pasado
-			        console.log('Oh no, la croc se rompio!: ', err.code);
-			    }
-			});
-									
-		}else{ //error si el formato del archivo es incorrecto
-			message.channel.send(e+' es un formato invalido. formatos validos -> ['+valid_ext+']');
-		} //fin si es imagen
-
-	}; //fin args add
-
 
 	if (args[0] == 'count'){ //si el argumento es count muestro la cantidad de lineas en el archivo txt
 		message.channel.send('Hay '+imagenes.length+' archivos en la croc.')
@@ -207,12 +154,12 @@ exports.run = (client, message, args) =>{
 					userdata.logins++;	//incremento +1 el contador de logins diarios
 
 					//si pasaron +48hs pierde el login
-					if(hourDifference >= 48){ 
-						userdata.logins = 1; //reinicio el contador
-						message.channel.send ('perdiste el login :(');
-					}
+					// if(hourDifference >= 48){ 
+					// 	userdata.logins = 1; //reinicio el contador
+					// 	message.channel.send ('perdiste el login :(');
+					// }
 
-					message.channel.send ('Logins de '+username+': '+userdata.logins);
+					// message.channel.send ('Logins de '+username+': '+userdata.logins);
 
 					//guardo los nuevos datos
 					fs.writeFileSync(userid,JSON.stringify(userdata));
